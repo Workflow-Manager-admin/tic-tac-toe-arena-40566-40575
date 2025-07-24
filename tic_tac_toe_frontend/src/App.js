@@ -5,6 +5,9 @@ import { AuthProvider, useAuth } from "./AuthContext";
 import Login from "./Login";
 import Register from "./Register";
 import GameContainer from "./GameContainer";
+import Lobby from "./Lobby";
+import Scoreboard from "./Scoreboard";
+import GameHistory from "./GameHistory";
 
 // PUBLIC_INTERFACE
 function App() {
@@ -48,6 +51,9 @@ function MainContent({ theme }) {
   const { isAuthenticated, user, logout } = useAuth();
   const [showRegister, setShowRegister] = useState(false);
 
+  // Open/close a game via gameId (null = not currently playing)
+  const [openGameId, setOpenGameId] = useState(null);
+
   if (!isAuthenticated) {
     if (showRegister) {
       return (
@@ -66,6 +72,7 @@ function MainContent({ theme }) {
     }
   }
 
+  // Show the main dashboard when authenticated
   return (
     <div>
       <p>
@@ -77,7 +84,29 @@ function MainContent({ theme }) {
       <p>
         Current theme: <strong>{theme}</strong>
       </p>
-      <GameContainer />
+      {/* Scores and game history always visible */}
+      <Scoreboard />
+      {/* Main section: either current game view, or lobby+history */}
+      {!openGameId ? (
+        <>
+          <Lobby onOpenGame={setOpenGameId} />
+          <div style={{marginTop: 8}}>
+            <button
+              className="auth-button"
+              onClick={() => setOpenGameId("NEW")}
+              style={{ fontWeight: 600, fontSize: "1.1rem" }}
+            >
+              Start New Game
+            </button>
+          </div>
+          <GameHistory />
+        </>
+      ) : (
+        <GameContainer
+          gameId={openGameId === "NEW" ? null : openGameId}
+          onLeaveGame={() => setOpenGameId(null)}
+        />
+      )}
     </div>
   );
 }

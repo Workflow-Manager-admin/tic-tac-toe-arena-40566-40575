@@ -11,13 +11,20 @@ import { useAuth } from "./AuthContext";
  */
 
 // PUBLIC_INTERFACE
-export default function GameContainer() {
+/**
+ * GameContainer now supports loading an existing game ID (for open/continue from lobby/history).
+ * Accepts:
+ *   - gameId: if null, lets user start game. If set, loads that game from backend.
+ *   - onLeaveGame: callback when user leaves: returns to dashboard.
+ */
+export default function GameContainer({ gameId = null, onLeaveGame }) {
   const { user, token } = useAuth();
   const [game, setGame] = useState(null); // game object from backend
   const [polling, setPolling] = useState(false);
   const [pollIntervalId, setPollIntervalId] = useState(null);
   const [moveError, setMoveError] = useState("");
   const [creating, setCreating] = useState(false);
+  const [loadingGame, setLoadingGame] = useState(false);
 
   const BACKEND =
     process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
@@ -36,6 +43,32 @@ export default function GameContainer() {
     },
     [token]
   );
+
+  // On load: if gameId prop is provided, load that game.
+  useEffect(() => {
+    let ignore = false;
+    if (gameId && (!game || game.id !== gameId)) {
+      setLoadingGame(true);
+      authFetch(`${BACKEND}/games/${gameId}`)
+        .then(resp => {
+          if (!resp.ok) throw new Error("Could not fetch game");
+          return resp.json();
+        })
+        .then(data => {
+          if (!ignore) {
+            setGame(data);
+            setPolling(true);
+          }
+        })
+        .catch(() => setMoveError("Game not found or you are not a player"))
+        .finally(() => setLoadingGame(false));
+    } else if (!gameId && !game) {
+      setGame(null);
+      setPolling(false);
+    }
+    return () => { ignore = true; };
+    // eslint-disable-next-line
+  }, [gameId]);
 
   // Start a new game
   const startGame = async () => {
@@ -157,11 +190,25 @@ export default function GameContainer() {
     }
   };
 
+  // When user clicks "Leave Game", reset all state and notify parent
+  const handleLeave = () => {
+    setGame(null);
+    setMoveError("");
+    setPolling(false);
+    if (typeof onLeaveGame === "function") {
+      onLeaveGame();
+    }
+  };
+
   // UI
   return (
     <div className="game-container" style={{ marginTop: "2rem" }}>
       <h2>Tic Tac Toe Arena</h2>
-      {!game ? (
+      {/* Case: loading a game by gameId */}
+      {loadingGame && (
+        <div style={{margin:"1.5rem 0"}}><em>Loading game...</em></div>
+      )}
+      {!game && !gameId && !loadingGame ? (
         <button
           onClick={startGame}
           className="auth-button"
@@ -169,7 +216,8 @@ export default function GameContainer() {
         >
           {creating ? "Starting Game..." : "Start New Game"}
         </button>
-      ) : (
+      ) : null}
+      {game ? (
         <>
           <Board board={game.board} onSquareClick={handleSquareClick} disabled={game.status !== "IN_PROGRESS"} />
           <div style={{ marginTop: 16 }}>
@@ -178,12 +226,12 @@ export default function GameContainer() {
           <button
             style={{marginTop: 16}}
             className="auth-button"
-            onClick={() => { setGame(null); setMoveError(""); setPolling(false); }}
+            onClick={handleLeave}
           >
             Leave Game
           </button>
         </>
-      )}
+      ) : null}
       {moveError && (
         <div style={{ color: "#f32828", fontWeight: 500, marginTop: 12 }}>
           {moveError}

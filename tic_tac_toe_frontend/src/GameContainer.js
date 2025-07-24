@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Board from "./Board";
 import { useAuth } from "./AuthContext";
+import { apiFetch, pollApi } from "./api";
 
 /**
  * GameContainer component handles the tic tac toe game logic:
@@ -26,34 +27,12 @@ export default function GameContainer({ gameId = null, onLeaveGame }) {
   const [creating, setCreating] = useState(false);
   const [loadingGame, setLoadingGame] = useState(false);
 
-  const BACKEND =
-    process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
-
-  // Helper for authenticated fetch
-  const authFetch = useCallback(
-    async (url, options = {}) => {
-      return fetch(url, {
-        ...options,
-        headers: {
-          ...(options.headers || {}),
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-    },
-    [token]
-  );
-
   // On load: if gameId prop is provided, load that game.
   useEffect(() => {
     let ignore = false;
     if (gameId && (!game || game.id !== gameId)) {
       setLoadingGame(true);
-      authFetch(`${BACKEND}/games/${gameId}`)
-        .then(resp => {
-          if (!resp.ok) throw new Error("Could not fetch game");
-          return resp.json();
-        })
+      apiFetch(`/games/${gameId}`, { token })
         .then(data => {
           if (!ignore) {
             setGame(data);
@@ -75,11 +54,9 @@ export default function GameContainer({ gameId = null, onLeaveGame }) {
     setCreating(true);
     setMoveError("");
     try {
-      const resp = await authFetch(`${BACKEND}/games`, { method: "POST" });
-      if (!resp.ok) throw new Error("Could not start game");
-      const data = await resp.json();
+      const data = await apiFetch(`/games`, { method: "POST", token });
       setGame(data);
-      setPolling(true); // begin polling for state
+      setPolling(true);
     } catch (err) {
       setMoveError(
         err.message === "Failed to fetch"
@@ -94,34 +71,42 @@ export default function GameContainer({ gameId = null, onLeaveGame }) {
   // Poll game state
   const pollGame = useCallback(
     (gameId) => {
-      if (!gameId) return;
-      if (!polling) return;
-      let interval = setInterval(async () => {
-        try {
-          const resp = await authFetch(`${BACKEND}/games/${gameId}`);
-          if (resp.ok) {
-            const data = await resp.json();
+      if (!gameId || !polling) return;
+      // Use abort signal to clean up
+      const ctrl = new AbortController();
+      const stop = pollApi(
+        async () => {
+          try {
+            const data = await apiFetch(`/games/${gameId}`, { token });
             setGame(data);
-            // If finished, stop polling
             if (data.status === "FINISHED" || data.status === "WAITING_FOR_PLAYER") {
               setPolling(false);
+              return data;
             }
+            return data;
+          } catch (err) {
+            // Could rethrow or simply continue polling
+            return null;
           }
-        } catch {
-          // suppress errors for polling
+        },
+        {
+          interval: 1300,
+          stopIf: (result) =>
+            result && (result.status === "FINISHED" || result.status === "WAITING_FOR_PLAYER"),
+          signal: ctrl.signal,
         }
-      }, 1000);
-      setPollIntervalId(interval);
-      return () => clearInterval(interval);
+      );
+      setPollIntervalId({ stop, ctrl });
+      return () => stop && stop();
     },
-    [authFetch, BACKEND, polling]
+    [token, polling]
   );
 
   // Start/stop polling
   useEffect(() => {
     if (!game || !polling) {
       if (pollIntervalId) {
-        clearInterval(pollIntervalId);
+        pollIntervalId.stop();
         setPollIntervalId(null);
       }
       return;
@@ -142,7 +127,6 @@ export default function GameContainer({ gameId = null, onLeaveGame }) {
   const handleSquareClick = async (x, y) => {
     if (!game || game.status !== "IN_PROGRESS") return;
     setMoveError("");
-    // Check your turn
     const currTurnSymbol =
       game.move_history.length % 2 === 0 ? "X" : "O";
     const currUserSymbol =
@@ -150,29 +134,21 @@ export default function GameContainer({ gameId = null, onLeaveGame }) {
     if (!currUserSymbol) return setMoveError("You are not a player in this game!");
     if (currTurnSymbol !== currUserSymbol)
       return setMoveError("Not your turn!");
-
-    // If already filled, ignore
     if (game.board[x][y]) return;
-    // Send move
     try {
-      const resp = await authFetch(
-        `${BACKEND}/games/${game.id}/move`,
+      // Use unified apiFetch, handles errors
+      const data = await apiFetch(
+        `/games/${game.id}/move`,
         {
           method: "POST",
-          body: JSON.stringify({ game_id: game.id, x, y }),
+          token,
+          body: { game_id: game.id, x, y },
         }
       );
-      if (!resp.ok) {
-        const { detail } = await resp.json();
-        setMoveError(detail || "Move failed");
-        return;
-      }
-      const data = await resp.json();
       setGame(data);
-      // If game finished (win/tie), stop polling
       if (data.status === "FINISHED") setPolling(false);
     } catch (err) {
-      setMoveError("Move failed");
+      setMoveError(String(err?.message || "Move failed"));
     }
   };
 
@@ -180,13 +156,11 @@ export default function GameContainer({ gameId = null, onLeaveGame }) {
   const handleJoin = async () => {
     setMoveError("");
     try {
-      const resp = await authFetch(`${BACKEND}/games/${game.id}/join`, { method: "POST" });
-      if (!resp.ok) throw new Error("Failed to join as O");
-      const data = await resp.json();
+      const data = await apiFetch(`/games/${game.id}/join`, { method: "POST", token });
       setGame(data);
       setPolling(true);
     } catch (err) {
-      setMoveError(err.message || "Join failed");
+      setMoveError(String(err?.message || "Join failed"));
     }
   };
 

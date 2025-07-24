@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "./AuthContext";
-
+import { apiFetch } from "./api";
 /**
  * Lobby component shows all current user's games, allows joining unfinished games, and can start a new one.
  * Integrates with backend to list games and join selected games.
@@ -15,34 +15,19 @@ export default function Lobby({ onOpenGame }) {
   const [error, setError] = useState(null);
   const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
 
-  const authFetch = useCallback(
-    async (url, options = {}) => {
-      return fetch(url, {
-        ...options,
-        headers: {
-          ...(options.headers || {}),
-          Authorization: `Bearer ${token}`,
-        },
-      });
-    },
-    [token]
-  );
-
   // Fetch user's games
   const fetchGames = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const resp = await authFetch(`${BACKEND}/games/my`);
-      if (!resp.ok) throw new Error("Could not fetch games");
-      const data = await resp.json();
+      const data = await apiFetch(`/games/my`, { token });
       setGames(data || []);
     } catch (err) {
       setError(err.message || "Failed to fetch games");
     } finally {
       setLoading(false);
     }
-  }, [authFetch, BACKEND]);
+  }, [token]);
 
   useEffect(() => {
     fetchGames();
@@ -52,8 +37,7 @@ export default function Lobby({ onOpenGame }) {
     setJoinLoading(gameId);
     setError(null);
     try {
-      const resp = await authFetch(`${BACKEND}/games/${gameId}/join`, { method: "POST" });
-      if (!resp.ok) throw new Error("Could not join game.");
+      await apiFetch(`/games/${gameId}/join`, { method: "POST", token });
       // Opening the game will trigger GameContainer to hydrate it
       onOpenGame(gameId);
     } catch (e) {

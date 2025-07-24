@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "./AuthContext";
+import { apiFetch } from "./api";
 
 /**
  * GameHistory component lists all games user played (+ outcome for each).
@@ -19,18 +20,14 @@ export default function GameHistory() {
     setLoading(true);
     setError(null);
     try {
-      const resp = await fetch(`${BACKEND}/stats/history`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!resp.ok) throw new Error("Could not fetch history");
-      const data = await resp.json();
+      const data = await apiFetch(`/stats/history`, { token });
       setHistory(data || []);
     } catch (err) {
       setError(err.message || "Failed to load history");
     } finally {
       setLoading(false);
     }
-  }, [BACKEND, token]);
+  }, [token]);
 
   useEffect(() => {
     fetchHistory();

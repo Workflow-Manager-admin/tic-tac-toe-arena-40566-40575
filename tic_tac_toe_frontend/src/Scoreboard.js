@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "./AuthContext";
+import { apiFetch } from "./api";
 
 /**
  * Scoreboard shows current user's Win/Loss/Tie counts.
@@ -18,18 +19,14 @@ export default function Scoreboard() {
     setLoading(true);
     setError(null);
     try {
-      const resp = await fetch(`${BACKEND}/stats/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!resp.ok) throw new Error("Could not fetch scores");
-      const data = await resp.json();
+      const data = await apiFetch(`/stats/me`, { token });
       setStats(data);
     } catch (err) {
       setError(err.message || "Failed to load stats");
     } finally {
       setLoading(false);
     }
-  }, [BACKEND, token]);
+  }, [token]);
 
   useEffect(() => {
     fetchStats();

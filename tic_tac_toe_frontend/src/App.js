@@ -74,39 +74,54 @@ function MainContent({ theme }) {
 
   // Show the main dashboard when authenticated
   return (
-    <div>
-      <p>
-        Welcome <strong>{user && user.username}</strong>!
-      </p>
-      <button className="auth-button" onClick={logout}>
-        Logout
-      </button>
-      <p>
-        Current theme: <strong>{theme}</strong>
-      </p>
-      {/* Scores and game history always visible */}
-      <Scoreboard />
-      {/* Main section: either current game view, or lobby+history */}
-      {!openGameId ? (
-        <>
-          <Lobby onOpenGame={setOpenGameId} />
-          <div style={{marginTop: 8}}>
-            <button
-              className="auth-button"
-              onClick={() => setOpenGameId("NEW")}
-              style={{ fontWeight: 600, fontSize: "1.1rem" }}
-            >
-              Start New Game
-            </button>
-          </div>
-          <GameHistory />
-        </>
-      ) : (
-        <GameContainer
-          gameId={openGameId === "NEW" ? null : openGameId}
-          onLeaveGame={() => setOpenGameId(null)}
-        />
-      )}
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        minHeight: "80vh",
+        margin: "0 auto",
+        maxWidth: 520,
+        padding: 8,
+      }}
+    >
+      <div style={{ width: "100%", textAlign: "center" }}>
+        <p>
+          Welcome <strong>{user && user.username}</strong>!
+        </p>
+        <button className="auth-button" onClick={logout}>
+          Logout
+        </button>
+        <p style={{ marginBottom: 12, marginTop: 6 }}>
+          Current theme: <strong>{theme}</strong>
+        </p>
+        <Scoreboard />
+        {!openGameId ? (
+          <>
+            <Lobby onOpenGame={setOpenGameId} />
+            <div style={{ marginTop: 8 }}>
+              <button
+                className="auth-button"
+                onClick={() => setOpenGameId("NEW")}
+                style={{
+                  fontWeight: 600,
+                  fontSize: "1.1rem",
+                  width: "90%",
+                  maxWidth: 330,
+                }}
+              >
+                Start New Game
+              </button>
+            </div>
+            <GameHistory />
+          </>
+        ) : (
+          <GameContainer
+            gameId={openGameId === "NEW" ? null : openGameId}
+            onLeaveGame={() => setOpenGameId(null)}
+          />
+        )}
+      </div>
     </div>
   );
 }

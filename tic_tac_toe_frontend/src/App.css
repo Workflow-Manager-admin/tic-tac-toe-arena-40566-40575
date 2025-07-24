@@ -93,7 +93,37 @@
   }
 }
 
-/* ---------- Authentication Form Styles ---------- */
+/* -- Tic Tac Toe Board Styles -- */
+.ttt-square {
+  outline: none;
+  border: 2.5px solid var(--border-color);
+  font-family: inherit;
+  margin: 0;
+  padding: 0;
+  font-size: 2.1rem;
+  text-align: center;
+  background: var(--bg-primary);
+  box-shadow: 0 1px 2px rgba(30,136,229,0.04);
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, color 0.2s;
+}
+.ttt-square:disabled, .ttt-square[disabled] {
+  pointer-events: none;
+  opacity: 0.78;
+  background: #f4f6f8;
+  color: #bbb;
+  cursor: default;
+}
+.game-container {
+  text-align: center;
+  margin: 0 auto;
+  max-width: 420px;
+  background: var(--bg-primary);
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(30, 136, 229, 0.09);
+  padding: 1.6rem 1rem 2.2rem 1rem;
+}
+
 .auth-container {
   background: var(--bg-secondary);
   border-radius: 12px;

@@ -4,6 +4,7 @@ import './App.css';
 import { AuthProvider, useAuth } from "./AuthContext";
 import Login from "./Login";
 import Register from "./Register";
+import GameContainer from "./GameContainer";
 
 // PUBLIC_INTERFACE
 function App() {
@@ -76,14 +77,7 @@ function MainContent({ theme }) {
       <p>
         Current theme: <strong>{theme}</strong>
       </p>
-      <a
-        className="App-link"
-        href="https://reactjs.org"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Learn React
-      </a>
+      <GameContainer />
     </div>
   );
 }
